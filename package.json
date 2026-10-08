@@ -1,0 +1,14 @@
+{
+  "name": "precision-time",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/test-logic.mjs"
+  },
+  "license": "MIT",
+  "homepage": "https://osgk.com/time/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lor3nzo/precision-time.git"
+  }
+}
