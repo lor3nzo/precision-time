@@ -1,85 +1,152 @@
 # Precision Time
 
-A static-first, privacy-first world clock for shared hosting. The UI is inspired by premium cinematic product interfaces while remaining original and utility-focused.
+![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla-F7DF1E?logo=javascript&logoColor=000)
+![PHP](https://img.shields.io/badge/PHP-Server%20Time-777BB4?logo=php&logoColor=fff)
+[![License: MIT](https://img.shields.io/badge/License-MIT-d4b106)](LICENSE)
+![Version](https://img.shields.io/badge/version-1.0.1-0ea5e9)
+[![Live](https://img.shields.io/badge/live-osgk.com%2Ftime-22c55e)](https://osgk.com/time/)
 
-## Live site
+**A privacy-first precision world clock that measures your device clock against a same-origin server timestamp, displays world time, and calculates sunrise and sunset locally.**
 
-https://osgk.com/time/
+[**Open the live app →**](https://osgk.com/time/)
 
-## Source code
+---
 
-https://github.com/lor3nzo/precision-time
+## What it does
 
-## License
+Precision Time is a static-first browser application designed for fast shared-hosting deployment with a very small attack surface.
 
-MIT License. Copyright © 2026 Lorenzo Geraci. See `LICENSE`.
-
-## Features
-
-- Large live clock with 12/24-hour and seconds controls
-- Browser timezone detection using IANA timezone identifiers
-- Nine-sample same-origin server clock comparison with latency-aware uncertainty
-- Sunrise, sunset, and daylight duration calculated locally from city coordinates
+- Large live local clock with seconds and 12/24-hour display
+- Automatic browser timezone detection using IANA timezone identifiers
+- Nine-sample clock comparison with latency-aware uncertainty
+- Sunrise, sunset, and daylight duration calculated locally from coordinates
 - Searchable bundled city dataset
-- Five world-clock cards: Los Angeles, London, Paris, Beijing, Tokyo
+- World clocks for Los Angeles, London, Paris, Beijing, and Tokyo
 - Dark, light, and system themes
 - Shareable `?city=slug` URLs
-- LocalStorage preferences only; no database, login, analytics, or tracking
-- Responsive and keyboard-accessible UI
+- Keyboard-accessible, responsive interface
+- No accounts, database, analytics, advertising, or tracking
 
-## Runtime architecture
+## Architecture
 
-Production requires only static files plus PHP for `api/time.php`. No Node.js process, database, API key, external JavaScript, CDN library, or paid feed is required.
+```text
+Browser
+├── HTML / CSS / vanilla JavaScript
+├── IANA timezone data via Intl
+├── bundled city dataset
+├── local solar calculations
+└── /api/time.php
+      └── current server Unix time in milliseconds
+```
 
-The browser uses its IANA timezone data for time-zone and DST rules. Solar times are calculated locally. The server endpoint returns its current Unix timestamp in milliseconds and is deliberately non-cacheable.
+Production requires only static files plus one read-only PHP endpoint. No Node.js process, database, API key, external JavaScript library, or paid data feed is required.
 
-## SiteGround deployment
+## Clock accuracy model
 
-1. In SiteGround Site Tools, open **Site > File Manager** or deploy via SFTP.
-2. Create `public_html/time/`.
-3. Upload the **contents** of this project folder into `public_html/time/`.
-4. Confirm PHP is enabled for the site. The app uses only basic PHP available on standard shared hosting.
-5. Open `https://YOUR-DOMAIN/time/api/time.php`. It should return JSON such as `{"unix_ms":1791425635123}`.
-6. Confirm the response headers include `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`.
-7. If SiteGround Optimizer or a CDN overrides caching for the endpoint, exclude `/time/api/time.php` from caching.
-8. Open `https://YOUR-DOMAIN/time/` and click **Measure again**. Verify the accuracy panel reports samples and a round-trip time.
+The browser takes nine timestamp samples from the same-origin server endpoint.
 
-If your site uses a custom server configuration that does not honor `.htaccess`, reproduce the headers from `.htaccess` in SiteGround/CDN settings.
+For each sample it records:
 
-## Accuracy model
+```text
+T1 = client send time
+T2 = server timestamp
+T3 = client receive time
 
-The browser takes nine timestamp samples. For each sample it records the client send time, client receive time, and server timestamp. It estimates clock offset from the client midpoint, sorts samples by round-trip latency, uses the faster half, and calculates a median offset plus a conservative uncertainty estimate based on latency and median absolute deviation.
+RTT = T3 - T1
+estimated offset = client midpoint - server timestamp
+```
 
-This is an internet clock-comparison estimate, not an atomic-clock or metrology claim. Network-path asymmetry remains a source of error.
+The implementation favors lower-latency samples, calculates a median offset, and reports a conservative uncertainty estimate.
+
+> This is an internet clock-comparison estimate. It is not a NIST, GPS, PTP, atomic-clock, or metrology traceability claim. Network-path asymmetry remains a source of error.
+
+## Privacy and security
+
+The production application has a deliberately small attack surface:
+
+- no login or user accounts
+- no database
+- no cookies
+- no third-party scripts or trackers
+- no secrets or API keys in browser code
+- no cross-origin application API calls
+- restrictive Content Security Policy
+- clickjacking and MIME-sniffing protections
+- non-cacheable timestamp endpoint
+- user search input is rendered with DOM APIs and `textContent`
+
+See [SECURITY.md](SECURITY.md) for implementation details.
 
 ## City data
 
-`data/cities.json` contains 80 curated major cities with IANA timezone IDs and coordinates. Add cities with this shape:
+`data/cities.json` contains 80 curated cities with IANA timezone identifiers and coordinates.
+
+Example:
 
 ```json
-{"slug":"new-york","name":"New York","country":"United States","timezone":"America/New_York","lat":40.7128,"lon":-74.0060}
+{
+  "slug": "new-york",
+  "name": "New York",
+  "country": "United States",
+  "timezone": "America/New_York",
+  "lat": 40.7128,
+  "lon": -74.006
+}
 ```
 
-Use valid IANA timezone identifiers. The search UI automatically includes added records.
+Additional cities can be added without changing the search logic.
 
 ## Local development
 
-PHP server:
+Run the project with PHP's built-in development server:
 
 ```bash
 php -S 127.0.0.1:8080
 ```
 
-Then open `http://127.0.0.1:8080/`.
+Then open:
 
-Run logic tests with Node.js 18+:
+```text
+http://127.0.0.1:8080/
+```
+
+Run the logic tests with Node.js 18+:
 
 ```bash
 npm test
 ```
 
-Node.js is needed only for development tests, not production.
+Node.js is used only for development tests and is not required in production.
 
-## Security posture
+## SiteGround deployment
 
-See `SECURITY.md`. The app has no user accounts, forms that submit data, database, third-party scripts, dynamic HTML injection, or cross-origin API access. A restrictive Content Security Policy is included both in HTML and `.htaccess`.
+1. Create `public_html/time/`.
+2. Upload the **contents** of the repository into that folder.
+3. Confirm PHP is enabled.
+4. Open `https://YOUR-DOMAIN/time/api/time.php`.
+5. Verify it returns fresh JSON such as:
+
+```json
+{"unix_ms": 1791425635123}
+```
+
+6. Ensure `/time/api/time.php` is excluded from server/CDN caching.
+7. Open the application and use **Measure again** to verify clock comparison.
+
+The production deployment for this repository is:
+
+**https://osgk.com/time/**
+
+## Repository verification
+
+The repository includes:
+
+- `VERIFICATION.md` for implementation checks
+- `CHECKSUMS.sha256` for packaged-file integrity
+- `SECURITY.md` for security controls and deployment caveats
+
+## License
+
+Released under the [MIT License](LICENSE).
+
+Copyright © 2026 Lorenzo Geraci.
